@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>CareerPilot Autofill</title>
+    <style>
+      body { width: 360px; margin: 16px; font: 14px system-ui, sans-serif; color: #1f2937; }
+      label { display: block; margin: 10px 0 4px; font-weight: 600; }
+      input { box-sizing: border-box; width: 100%; padding: 7px; }
+      button { margin-top: 12px; padding: 8px 12px; cursor: pointer; }
+      #status { margin-top: 12px; white-space: pre-wrap; }
+      .review { color: #9a3412; }
+    </style>
+  </head>
+  <body>
+    <h2>CareerPilot 自动填写</h2>
+    <p>只填充已验证字段，未知问题请在页面上手动确认。</p>
+    <label for="apiBase">CareerPilot API</label>
+    <input id="apiBase" value="http://127.0.0.1:8000/api/v1" />
+    <label for="token">Access Token</label>
+    <input id="token" type="password" placeholder="粘贴 CareerPilot 登录 Token" />
+    <label for="applicationId">申请记录 ID</label>
+    <input id="applicationId" placeholder="Applications 页面中的 ID" />
+    <label for="resumeId">简历文档 ID</label>
+    <input id="resumeId" placeholder="Knowledge Base 页面中的 ID" />
+    <button id="scan">扫描当前申请页</button>
+    <button id="fill" disabled>生成计划并填写可验证字段</button>
+    <div id="status"></div>
+    <script src="popup.js"></script>
+  </body>
+</html>

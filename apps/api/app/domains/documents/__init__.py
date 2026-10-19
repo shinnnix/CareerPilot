@@ -1,0 +1,1 @@
+"""Private knowledge document domain."""

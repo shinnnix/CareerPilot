@@ -1,0 +1,31 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.npm-cache/
+.docker-config/
+
+# Local configuration and data
+.env
+apps/api/.env
+apps/web/.env.local
+*.db
+*.sqlite
+*.sqlite3
+data/private/
+models/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

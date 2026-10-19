@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: careerpilot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: careerpilot
+      POSTGRES_USER: careerpilot
+      POSTGRES_PASSWORD: careerpilot
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U careerpilot -d careerpilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - careerpilot_postgres_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ../apps/api
+    restart: unless-stopped
+    environment:
+      CAREERPILOT_ENVIRONMENT: production
+      CAREERPILOT_DEBUG: "false"
+      CAREERPILOT_DATABASE_URL: postgresql+psycopg://careerpilot:careerpilot@postgres:5432/careerpilot
+      CAREERPILOT_AUTH_SECRET: ${CAREERPILOT_AUTH_SECRET:-local-compose-secret-change-before-deploying}
+      CAREERPILOT_ALLOW_DEMO_AUTH: "false"
+      CAREERPILOT_CORS_ORIGINS: '["http://localhost:8080"]'
+      CAREERPILOT_SEED_EMAIL: ${CAREERPILOT_SEED_EMAIL:-demo@example.com}
+      CAREERPILOT_SEED_PASSWORD: ${CAREERPILOT_SEED_PASSWORD:-CareerPilot-demo-2026}
+    command: >-
+      sh -c "alembic upgrade head && python -m scripts.seed_demo &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: ../apps/web
+      args:
+        VITE_API_BASE_URL: /api/v1
+        VITE_ALLOW_DEMO_AUTH: "false"
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      # BusyBox wget may resolve localhost to ::1 while this nginx config listens on IPv4.
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    ports:
+      - "8080:80"
+
+volumes:
+  careerpilot_postgres_data:
