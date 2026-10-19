@@ -10,11 +10,14 @@ class ApplicationCreate(BaseModel):
     job_id: str
     status: ApplicationStatus = ApplicationStatus.saved
     notes: str | None = Field(default=None, max_length=5000)
+    next_follow_up_at: datetime | None = None
 
 
 class ApplicationUpdate(BaseModel):
     status: ApplicationStatus | None = None
     notes: str | None = Field(default=None, max_length=5000)
+    next_follow_up_at: datetime | None = None
+    interview_feedback: str | None = Field(default=None, max_length=10000)
     event_note: str | None = Field(default=None, max_length=1000)
 
 
@@ -25,6 +28,8 @@ class ApplicationRead(BaseModel):
     company_name: str
     status: ApplicationStatus
     notes: str | None
+    next_follow_up_at: datetime | None
+    interview_feedback: str | None
     applied_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -33,6 +38,12 @@ class ApplicationRead(BaseModel):
 class ApplicationList(BaseModel):
     items: list[ApplicationRead]
     total: int
+
+
+class ApplicationMetrics(BaseModel):
+    total: int
+    by_status: dict[str, int]
+    due_follow_ups: int
 
 
 class ApplicationEventRead(BaseModel):

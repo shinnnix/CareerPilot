@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
@@ -14,6 +15,7 @@ from app.domains.applications.schemas import (
     ApplicationCreate,
     ApplicationDetail,
     ApplicationList,
+    ApplicationMetrics,
     ApplicationRead,
     ApplicationUpdate,
     AutofillPlan,
@@ -40,6 +42,23 @@ def list_applications(
     application_status: Annotated[ApplicationStatus | None, Query(alias="status")] = None,
 ) -> ApplicationList:
     return service.list(user_id=user_id, status=application_status)
+
+
+@router.get("/applications/follow-ups", response_model=ApplicationList)
+def list_followups(
+    service: Annotated[ApplicationService, Depends(get_application_service)],
+    user_id: Annotated[str, Depends(get_current_user_id)],
+    before: Annotated[datetime | None, Query()] = None,
+) -> ApplicationList:
+    return service.followups(user_id=user_id, before=before or datetime.now(timezone.utc))
+
+
+@router.get("/applications/metrics", response_model=ApplicationMetrics)
+def application_metrics(
+    service: Annotated[ApplicationService, Depends(get_application_service)],
+    user_id: Annotated[str, Depends(get_current_user_id)],
+) -> ApplicationMetrics:
+    return service.metrics(user_id=user_id)
 
 
 @router.post(

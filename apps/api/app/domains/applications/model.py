@@ -63,6 +63,8 @@ class Application(Base):
         index=True,
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_follow_up_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    interview_feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now

@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
@@ -85,3 +88,17 @@ class ApplicationRepository:
             )
             or 0
         )
+
+    def list_followups(self, *, user_id: str, before: datetime) -> list[ApplicationRow]:
+        statement = (
+            select(Application, Job)
+            .join(Job, Job.id == Application.job_id)
+            .where(
+                Application.user_id == user_id,
+                Application.next_follow_up_at.is_not(None),
+                Application.next_follow_up_at <= before,
+                Application.status.not_in({ApplicationStatus.rejected, ApplicationStatus.withdrawn}),
+            )
+            .order_by(Application.next_follow_up_at.asc(), Application.updated_at.desc())
+        )
+        return [ApplicationRow(*row) for row in self.session.execute(statement)]

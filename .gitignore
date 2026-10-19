@@ -24,6 +24,16 @@ apps/web/.env.local
 data/private/
 models/
 
+# Personal interview/resume artifacts (never commit)
+agent.md
+AI_INTERNSHIP_AGENT_ARCHITECTURE.md
+INTERNSHIP_RESUME_PROJECT_DESCRIPTION.md
+Agent开发面试知识手册_沈鑫.docx
+agent_guide_render/
+build_agent_interview_guide.py
+.tmp_resume_render/
+.tmp_resume_chunk_review/
+
 # Editors and operating systems
 .idea/
 .vscode/

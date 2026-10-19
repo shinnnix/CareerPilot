@@ -18,6 +18,7 @@ from app.domains.applications.schemas import (
     ApplicationCreate,
     ApplicationDetail,
     ApplicationList,
+    ApplicationMetrics,
     ApplicationRead,
     ApplicationUpdate,
     ArtifactItem,
@@ -89,6 +90,7 @@ class ApplicationService:
             job_id=payload.job_id,
             status=payload.status,
             notes=payload.notes,
+            next_follow_up_at=payload.next_follow_up_at,
             applied_at=(
                 datetime.now(timezone.utc) if payload.status == ApplicationStatus.applied else None
             ),
@@ -121,6 +123,19 @@ class ApplicationService:
     def list(self, *, user_id: str, status: ApplicationStatus | None) -> ApplicationList:
         rows = self.repository.list(user_id=user_id, status=status)
         return ApplicationList(items=[self._read(row) for row in rows], total=len(rows))
+
+    def followups(self, *, user_id: str, before: datetime) -> ApplicationList:
+        rows = self.repository.list_followups(user_id=user_id, before=before)
+        return ApplicationList(items=[self._read(row) for row in rows], total=len(rows))
+
+    def metrics(self, *, user_id: str) -> ApplicationMetrics:
+        rows = self.repository.list(user_id=user_id, status=None)
+        counts = {status.value: 0 for status in ApplicationStatus}
+        for row in rows:
+            counts[row.application.status.value] += 1
+        now = datetime.now(timezone.utc)
+        due = len(self.repository.list_followups(user_id=user_id, before=now))
+        return ApplicationMetrics(total=len(rows), by_status=counts, due_follow_ups=due)
 
     def get(self, *, user_id: str, application_id: str) -> ApplicationDetail:
         row = self._get(user_id=user_id, application_id=application_id, with_events=True)
@@ -173,6 +188,10 @@ class ApplicationService:
             )
         if "notes" in payload.model_fields_set:
             application.notes = payload.notes
+        if "next_follow_up_at" in payload.model_fields_set:
+            application.next_follow_up_at = payload.next_follow_up_at
+        if "interview_feedback" in payload.model_fields_set:
+            application.interview_feedback = payload.interview_feedback
         try:
             self.session.commit()
         except Exception:
@@ -234,6 +253,8 @@ class ApplicationService:
             company_name=row.job.company_name,
             status=application.status,
             notes=application.notes,
+            next_follow_up_at=application.next_follow_up_at,
+            interview_feedback=application.interview_feedback,
             applied_at=application.applied_at,
             created_at=application.created_at,
             updated_at=application.updated_at,

@@ -14,6 +14,8 @@ export interface ApplicationSummary {
   company_name: string
   status: ApplicationStatus
   notes: string | null
+  next_follow_up_at: string | null
+  interview_feedback: string | null
   applied_at: string | null
   created_at: string
   updated_at: string
@@ -30,6 +32,12 @@ export interface ApplicationEvent {
 
 export interface ApplicationDetail extends ApplicationSummary {
   events: ApplicationEvent[]
+}
+
+export interface ApplicationMetrics {
+  total: number
+  by_status: Record<ApplicationStatus, number>
+  due_follow_ups: number
 }
 
 export interface Citation {
