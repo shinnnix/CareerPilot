@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Delete, Refresh, Select } from '@element-plus/icons-vue'
+import { ArrowLeft, Delete, MagicStick, Refresh, Select } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
@@ -11,7 +11,8 @@ import {
   getDocumentChunks,
   reindexDocument,
 } from '@/api/documents'
-import { getApiErrorMessage } from '@/api/errors'
+import { getApiErrorCode, getApiErrorDetails, getApiErrorMessage } from '@/api/errors'
+import { createResumeFromDocument } from '@/api/resumes'
 import DocumentChunkCard from '@/components/DocumentChunkCard.vue'
 import type {
   DocumentChunk,
@@ -106,6 +107,27 @@ async function handleReindex() {
   }
 }
 
+async function openResumeWorkspace() {
+  if (!document.value) return
+  try {
+    const resume = await createResumeFromDocument({
+      document_id: document.value.id,
+      title: document.value.display_name,
+    })
+    ElMessage.success('已生成可编辑简历工作台')
+    await router.push(`/workspace/resumes/${resume.id}`)
+  } catch (error) {
+    if (getApiErrorCode(error) === 'RESUME_EXISTS') {
+      const resumeId = getApiErrorDetails(error).resume_id
+      if (typeof resumeId === 'string') {
+        await router.push(`/workspace/resumes/${resumeId}`)
+        return
+      }
+    }
+    ElMessage.error(getApiErrorMessage(error))
+  }
+}
+
 async function handleDelete() {
   const confirmed = await ElMessageBox.confirm(
     '将同时删除原文、结构化字段和所有 Chunk，确认继续吗？',
@@ -116,7 +138,7 @@ async function handleDelete() {
   try {
     await deleteDocument(documentId.value)
     ElMessage.success('知识库文档已删除')
-    await router.push('/knowledge')
+    await router.push('/workspace/library')
   } catch (error) {
     ElMessage.error(getApiErrorMessage(error))
   }
@@ -127,7 +149,7 @@ onMounted(loadAll)
 
 <template>
   <main class="page">
-    <RouterLink class="back-link" to="/knowledge">
+    <RouterLink class="back-link" to="/workspace/library">
       <el-icon><ArrowLeft /></el-icon>
       返回知识库
     </RouterLink>
@@ -162,6 +184,14 @@ onMounted(loadAll)
           </p>
         </div>
         <div class="detail-actions">
+          <el-button
+            v-if="document.document_type === 'resume'"
+            type="primary"
+            :icon="MagicStick"
+            @click="openResumeWorkspace"
+          >
+            打开简历工作台
+          </el-button>
           <el-button :icon="Refresh" :loading="reindexing" @click="handleReindex">
             重新解析
           </el-button>

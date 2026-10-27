@@ -16,6 +16,12 @@ from app.domains.applications.model import (  # noqa: F401
 from app.domains.auth.model import User  # noqa: F401
 from app.domains.documents.model import DocumentChunk, KnowledgeDocument  # noqa: F401
 from app.domains.jobs.model import Job  # noqa: F401
+from app.domains.reminders.model import Reminder  # noqa: F401
+from app.domains.resumes.model import (  # noqa: F401
+    Resume,
+    ResumeOptimization,
+    ResumeVersion,
+)
 
 config = context.config
 if config.config_file_name is not None:

@@ -7,7 +7,7 @@ import { getApiErrorMessage } from '@/api/errors'
 import { indexKnowledgeBase, searchKnowledgeBase } from '@/api/retrieval'
 import type { RetrievalMode, SearchResponse } from '@/types/retrieval'
 
-const query = ref('Vue 和 FastAPI 的 RAG 项目经验')
+const query = ref('')
 const mode = ref<RetrievalMode>('hybrid')
 const loading = ref(false)
 const indexing = ref(false)
@@ -49,22 +49,33 @@ function score(value: number | null) {
 
 <template>
   <main class="page">
-    <section class="retrieval-hero">
+    <header class="page-head">
       <div>
-        <p class="eyebrow">HYBRID RETRIEVAL LAB</p>
-        <h1>看得见每一层分数的检索</h1>
-        <p>切换关键词、Dense、RRF 与 Rerank，观察同一问题的排序变化。</p>
+        <p class="eyebrow">更多工具</p>
+        <h1>证据检索</h1>
+        <p class="page-desc">
+          从自己的资料里找可引用的证据，用来解释匹配分、准备面试回答。
+          每条结果都带出处与父 Chunk 上下文，方便直接引用。
+        </p>
       </div>
-      <el-button :icon="Refresh" :loading="indexing" @click="indexAll">更新向量索引</el-button>
-    </section>
+      <div class="page-head-actions">
+        <el-button :icon="Refresh" :loading="indexing" @click="indexAll">更新向量索引</el-button>
+      </div>
+    </header>
 
     <section class="surface retrieval-toolbar">
-      <el-input v-model="query" :prefix-icon="Search" size="large" @keyup.enter="search" />
+      <el-input
+        v-model="query"
+        :prefix-icon="Search"
+        size="large"
+        placeholder="例如：用 FastAPI 做过什么项目"
+        @keyup.enter="search"
+      />
       <el-select v-model="mode" size="large">
-        <el-option label="关键词 BM25" value="keyword" />
-        <el-option label="Dense" value="dense" />
-        <el-option label="Hybrid / RRF" value="hybrid" />
-        <el-option label="Hybrid + Rerank" value="rerank" />
+        <el-option label="关键词" value="keyword" />
+        <el-option label="语义" value="dense" />
+        <el-option label="混合（默认）" value="hybrid" />
+        <el-option label="混合 + 重排" value="rerank" />
       </el-select>
       <el-button type="primary" size="large" :icon="Connection" :loading="loading" @click="search">
         检索
@@ -74,7 +85,7 @@ function score(value: number | null) {
     <section v-if="result" class="retrieval-results">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">TRACE</p>
+          <p class="eyebrow">结果</p>
           <h2>{{ result.items.length }} 条证据</h2>
         </div>
         <span>{{ result.embedding_model }} · {{ result.latency_ms }} ms</span>
@@ -87,10 +98,10 @@ function score(value: number | null) {
         </header>
         <p>{{ hit.expanded_content || hit.content }}</p>
         <footer>
-          <span>BM25 {{ score(hit.keyword_score) }}</span>
-          <span>Dense {{ score(hit.dense_score) }}</span>
-          <span>RRF {{ score(hit.fusion_score) }}</span>
-          <span>Rerank {{ score(hit.rerank_score) }}</span>
+          <span>关键词 {{ score(hit.keyword_score) }}</span>
+          <span>语义 {{ score(hit.dense_score) }}</span>
+          <span>融合 {{ score(hit.fusion_score) }}</span>
+          <span>重排 {{ score(hit.rerank_score) }}</span>
         </footer>
       </article>
     </section>

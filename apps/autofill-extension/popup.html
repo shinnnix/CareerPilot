@@ -4,25 +4,48 @@
     <meta charset="UTF-8" />
     <title>CareerPilot Autofill</title>
     <style>
-      body { width: 360px; margin: 16px; font: 14px system-ui, sans-serif; color: #1f2937; }
+      body { width: 380px; margin: 16px; font: 14px system-ui, sans-serif; color: #1f2937; }
       label { display: block; margin: 10px 0 4px; font-weight: 600; }
-      input { box-sizing: border-box; width: 100%; padding: 7px; }
+      input, textarea { box-sizing: border-box; width: 100%; padding: 7px; }
+      textarea { min-height: 74px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
       button { margin-top: 12px; padding: 8px 12px; cursor: pointer; }
+      button.link { margin: 0; padding: 0; border: 0; background: none; color: #176b4d; text-decoration: underline; }
       #status { margin-top: 12px; white-space: pre-wrap; }
       .review { color: #9a3412; }
+      fieldset { margin: 16px 0 0; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; }
+      legend { padding: 0 6px; font-weight: 700; }
+      .hint { margin: 4px 0 0; color: #6b7280; font-size: 12px; }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     </style>
   </head>
   <body>
     <h2>CareerPilot 自动填写</h2>
-    <p>只填充已验证字段，未知问题请在页面上手动确认。</p>
+    <p>只填充已验证字段，未知问题请在页面上手动确认；永不自动提交。</p>
+
     <label for="apiBase">CareerPilot API</label>
     <input id="apiBase" value="http://127.0.0.1:8000/api/v1" />
     <label for="token">Access Token</label>
     <input id="token" type="password" placeholder="粘贴 CareerPilot 登录 Token" />
-    <label for="applicationId">申请记录 ID</label>
-    <input id="applicationId" placeholder="Applications 页面中的 ID" />
+    <label for="applicationId">投递记录 ID</label>
+    <input id="applicationId" placeholder="投递详情页地址里的 ID" />
     <label for="resumeId">简历文档 ID</label>
-    <input id="resumeId" placeholder="Knowledge Base 页面中的 ID" />
+    <input id="resumeId" placeholder="简历对应的文档 ID" />
+
+    <fieldset>
+      <legend>网申个人信息</legend>
+      <div class="row">
+        <span id="profileStatus">未导入</span>
+        <button id="clearProfile" class="link" type="button">清除</button>
+      </div>
+      <p class="hint">
+        在 CareerPilot「网申个人信息」页点「同步到插件」会自动写入；
+        若通道不可用，把导出的 JSON 粘贴到下面再保存。
+      </p>
+      <label for="profileJson">粘贴 JSON（通道 ③）</label>
+      <textarea id="profileJson" placeholder='{"schemaVersion":1,"profileVersion":1,"fields":{...}}'></textarea>
+      <button id="saveProfile" type="button">保存粘贴的个人信息</button>
+    </fieldset>
+
     <button id="scan">扫描当前申请页</button>
     <button id="fill" disabled>生成计划并填写可验证字段</button>
     <div id="status"></div>

@@ -68,6 +68,36 @@ class UnsupportedDocumentError(AppError):
         )
 
 
+class ResumeNotFoundError(AppError):
+    def __init__(self, resume_id: str) -> None:
+        super().__init__(
+            code="RESUME_NOT_FOUND",
+            message="简历工作台不存在或已被删除",
+            status_code=404,
+            details={"resume_id": resume_id},
+        )
+
+
+class ResumeExistsError(AppError):
+    def __init__(self, resume_id: str) -> None:
+        super().__init__(
+            code="RESUME_EXISTS",
+            message="该文档已经建立过简历工作台",
+            status_code=409,
+            details={"resume_id": resume_id},
+        )
+
+
+class ResumeOptimizationNotFoundError(AppError):
+    def __init__(self, optimization_id: str) -> None:
+        super().__init__(
+            code="RESUME_OPTIMIZATION_NOT_FOUND",
+            message="简历优化记录不存在或已被删除",
+            status_code=404,
+            details={"optimization_id": optimization_id},
+        )
+
+
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:

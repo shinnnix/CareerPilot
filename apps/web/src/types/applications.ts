@@ -1,15 +1,58 @@
 export type ApplicationStatus =
-  | 'saved'
-  | 'preparing'
+  | 'not_applied'
   | 'applied'
-  | 'interview'
+  | 'written_test'
+  | 'interview_done'
   | 'offer'
   | 'rejected'
   | 'withdrawn'
 
+/** Statuses describe completed milestones only — there is no "正在面试". */
+export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
+  not_applied: '未投递',
+  applied: '已投递',
+  written_test: '已笔试',
+  interview_done: '已面试',
+  offer: '面试通过',
+  rejected: '已挂',
+  withdrawn: '已放弃',
+}
+
+export const APPLICATION_STATUSES: ApplicationStatus[] = [
+  'not_applied',
+  'applied',
+  'written_test',
+  'interview_done',
+  'offer',
+  'rejected',
+  'withdrawn',
+]
+
+export const TERMINAL_STATUSES: ApplicationStatus[] = ['offer', 'rejected', 'withdrawn']
+
+export const APPLICATION_CHANNELS = ['官网', '公众号邮箱', '网申链接', '内推', '招聘平台', '其他']
+
+export const CLOSED_REASONS = ['HC 取消', '技能不匹配', '竞争失败', '流程过长', '薪资不符', '其他']
+
+export const REJECTED_STAGES = ['简历', '笔试', '面试', '终面', '未知']
+
+/** Forward-only transitions; mirrors the backend state machine (plan §3.2). */
+export const ALLOWED_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
+  not_applied: ['applied'],
+  applied: ['written_test', 'interview_done', 'offer', 'rejected', 'withdrawn'],
+  written_test: ['interview_done', 'offer', 'rejected', 'withdrawn'],
+  interview_done: ['offer', 'rejected', 'withdrawn'],
+  offer: ['withdrawn'],
+  // Mis-click correction: the backend logs these as `status_corrected`.
+  rejected: ['applied'],
+  withdrawn: ['applied'],
+}
+
 export interface ApplicationSummary {
   id: string
-  job_id: string
+  job_id: string | null
+  announcement_id?: string | null
+  position_id?: string | null
   job_title: string
   company_name: string
   status: ApplicationStatus

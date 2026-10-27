@@ -1,3 +1,7 @@
+// Presence marker: the CareerPilot page uses it to offer sync channel ②
+// (read the slim snapshot from localStorage) when direct messaging is unavailable.
+document.documentElement.dataset.careerpilotExt = '1'
+
 function labelFor(element) {
   if (element.labels?.length) return element.labels[0].innerText.trim()
   const labelled = element.getAttribute('aria-label') || element.getAttribute('placeholder')

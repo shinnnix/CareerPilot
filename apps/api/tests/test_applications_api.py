@@ -30,7 +30,7 @@ def test_application_board_timeline_and_transition_rules(
     job_id = create_job(client, job_payload)
     created = client.post(
         "/api/v1/applications",
-        json={"job_id": job_id, "status": "saved", "notes": "重点岗位"},
+        json={"job_id": job_id, "status": "not_applied", "notes": "重点岗位"},
     )
     assert created.status_code == 201
     application_id = created.json()["id"]
@@ -55,7 +55,7 @@ def test_application_board_timeline_and_transition_rules(
         "status_changed",
     ]
 
-    invalid = client.patch(f"/api/v1/applications/{application_id}", json={"status": "saved"})
+    invalid = client.patch(f"/api/v1/applications/{application_id}", json={"status": "not_applied"})
     assert invalid.status_code == 409
     assert invalid.json()["code"] == "INVALID_APPLICATION_TRANSITION"
 

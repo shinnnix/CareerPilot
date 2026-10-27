@@ -9,3 +9,16 @@ export function getApiErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '发生未知错误'
 }
 
+export function getApiErrorCode(error: unknown): string | null {
+  if (axios.isAxiosError<ApiErrorPayload>(error)) {
+    return error.response?.data?.code || null
+  }
+  return null
+}
+
+export function getApiErrorDetails(error: unknown): Record<string, unknown> {
+  if (axios.isAxiosError<ApiErrorPayload>(error)) {
+    return error.response?.data?.details || {}
+  }
+  return {}
+}

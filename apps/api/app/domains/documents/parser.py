@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from app.domains.documents.model import DocumentType
 from app.domains.documents.schemas import ExtractedDocumentData
+from app.domains.matching.skills import detect_skills
 
 PARSER_VERSION = "rule-parser-v1"
 INDEX_VERSION = "title-aware-v1"
@@ -13,13 +14,23 @@ CHUNK_OVERLAP_CHARS = 80
 KNOWN_HEADINGS = {
     "个人简介",
     "个人信息",
+    "基本信息",
+    "自我介绍",
+    "求职意向",
     "教育经历",
+    "教育背景",
     "项目经历",
+    "项目经验",
     "实习经历",
     "工作经历",
+    "校园经历",
     "专业技能",
     "技能清单",
+    "技能特长",
+    "个人优势",
     "获奖经历",
+    "获奖情况",
+    "荣誉奖项",
     "自我评价",
     "职位描述",
     "岗位描述",
@@ -33,25 +44,6 @@ KNOWN_HEADINGS = {
     "优先条件",
     "公司介绍",
     "福利待遇",
-}
-
-SKILL_ALIASES = {
-    "python": ["python"],
-    "fastapi": ["fastapi"],
-    "vue": ["vue.js", "vue3", "vue 3", "vue"],
-    "typescript": ["typescript"],
-    "javascript": ["javascript"],
-    "langchain": ["langchain"],
-    "langgraph": ["langgraph"],
-    "rag": ["检索增强生成", "rag"],
-    "postgresql": ["postgresql", "postgres"],
-    "pgvector": ["pgvector"],
-    "docker": ["docker"],
-    "redis": ["redis"],
-    "sqlalchemy": ["sqlalchemy"],
-    "pytorch": ["pytorch"],
-    "transformers": ["transformers"],
-    "llm": ["大语言模型", "大模型", "llm"],
 }
 
 SECTION_TYPES = {
@@ -182,7 +174,7 @@ def extract_structured_data(
     city = _match_field(text, ["城市", "工作地点", "地点"])
     email_match = re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", text)
     phone_match = re.search(r"(?<!\d)(?:\+?86[- ]?)?1[3-9]\d{9}(?!\d)", text)
-    skills = _extract_skills(text)
+    skills = detect_skills(text)
     desired_city = _match_field(text, ["期望城市", "意向城市"])
     days_match = re.search(r"(?:每周可实习|每周到岗)\s*(\d)\s*天", text)
     months_match = re.search(r"(?:可实习|实习周期)\s*(\d{1,2})\s*个?月", text)
@@ -214,28 +206,6 @@ def _match_field(text: str, labels: list[str]) -> str | None:
         flags=re.MULTILINE | re.IGNORECASE,
     )
     return match.group(1).strip() if match else None
-
-
-def _extract_skills(text: str) -> list[str]:
-    lowered = text.lower()
-    detected = [
-        canonical
-        for canonical, aliases in SKILL_ALIASES.items()
-        if any(_contains_alias(lowered, alias.lower()) for alias in aliases)
-    ]
-    return sorted(detected)
-
-
-def _contains_alias(text: str, alias: str) -> bool:
-    if re.fullmatch(r"[a-z0-9 .+-]+", alias):
-        return bool(
-            re.search(
-                rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])",
-                text,
-                flags=re.IGNORECASE,
-            )
-        )
-    return alias in text
 
 
 def calculate_confidence(

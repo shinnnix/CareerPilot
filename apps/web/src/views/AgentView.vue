@@ -8,16 +8,29 @@ import { listApplications } from '@/api/applications'
 import { listDocuments } from '@/api/documents'
 import { getApiErrorMessage } from '@/api/errors'
 import { listJobs } from '@/api/jobs'
+import { sendAssistantMessage } from '@/api/settings'
+import type { ChatMessage } from '@/api/settings'
+import { useAiConfigStore } from '@/stores/ai-config'
 import type { AgentEventItem, AgentIntent, AgentRun, AgentRunInput } from '@/types/agent'
 import type { ApplicationStatus, ApplicationSummary } from '@/types/applications'
+import { APPLICATION_STATUS_LABELS } from '@/types/applications'
 import type { DocumentSummary } from '@/types/documents'
 import type { Job } from '@/types/jobs'
 import AgentConfirmationCard from '@/components/AgentConfirmationCard.vue'
 
+const aiStore = useAiConfigStore()
+const chatInput = ref('')
+const chatHistory = ref<ChatMessage[]>([])
+const chatting = ref(false)
+const chatError = ref('')
+
+/** Plan §5.3.5: chat must not silently degrade into a fake answer. */
+const chatBlocked = computed(() => !aiStore.hasChat)
+
 const form = reactive<AgentRunInput>({
-  message: '帮我找适合的 RAG 实习职位',
+  message: '帮我找适合的实习职位',
   intent: 'job_search',
-  query: 'RAG',
+  query: '',
   max_steps: 8,
 })
 const jobs = ref<Job[]>([])
@@ -35,15 +48,15 @@ const needsApplication = computed(() => form.intent === 'update_application')
 
 const eventLabels: Record<string, string> = {
   run_started: '任务已创建',
-  intent_routed: '完成意图路由',
-  tool_planned: '完成工具规划',
-  tool_started: '开始执行工具',
-  confirmation_required: '等待人工确认',
-  confirmation_rejected: '用户拒绝操作',
-  checkpoint_recovered: '从持久化检查点恢复',
-  run_completed: '任务完成',
-  run_failed: '任务失败',
-  stream_end: '事件流结束',
+  intent_routed: '理解目标',
+  tool_planned: '安排步骤',
+  tool_started: '执行中',
+  confirmation_required: '等待你确认',
+  confirmation_rejected: '已取消该操作',
+  checkpoint_recovered: '从中断处恢复',
+  run_completed: '完成',
+  run_failed: '失败',
+  stream_end: '结束',
 }
 
 async function loadOptions() {
@@ -111,42 +124,133 @@ async function resume() {
 
 function changeIntent(intent: AgentIntent) {
   const prompts: Record<AgentIntent, string> = {
-    job_search: '帮我找适合的 RAG 实习职位',
+    job_search: '帮我找适合的实习职位',
     match_report: '分析这份简历与职位是否匹配',
     skill_gap: '我还缺哪些技能',
-    create_application: '把这个职位加入申请看板',
-    update_application: '更新这条申请的状态',
+    create_application: '把这个职位加入投递记录',
+    update_application: '更新这条投递的状态',
   }
   form.message = prompts[intent]
 }
 
-onMounted(loadOptions)
+async function sendChat() {
+  const text = chatInput.value.trim()
+  if (!text || chatting.value) return
+  chatHistory.value.push({ role: 'user', content: text })
+  chatInput.value = ''
+  chatting.value = true
+  chatError.value = ''
+  try {
+    const reply = await sendAssistantMessage(
+      text,
+      chatHistory.value.slice(0, -1),
+      aiStore.configFor('chat'),
+    )
+    chatHistory.value.push({ role: 'assistant', content: reply.reply })
+  } catch (error) {
+    chatError.value = getApiErrorMessage(error)
+  } finally {
+    chatting.value = false
+  }
+}
+
+onMounted(() => {
+  aiStore.reload()
+  void loadOptions()
+})
 onBeforeUnmount(() => eventSource?.close())
 </script>
 
 <template>
   <main class="page">
-    <section class="agent-hero">
+    <header class="page-head">
       <div>
-        <p class="eyebrow">LANGGRAPH WORKFLOW</p>
-        <h1>每一步都能暂停、确认和恢复</h1>
-        <p>只读工具自动执行；修改申请数据前必须人工确认，并使用幂等 Key 防止重复写入。</p>
+        <p class="eyebrow">更多工具</p>
+        <h1>求职助手</h1>
+        <p class="page-desc">
+          能动手的助手：筛职位、解释匹配、生成材料、创建投递、更新状态。
+          只读动作直接执行；会改数据的动作先展示参数，等你确认后再幂等写入。
+        </p>
       </div>
+      <div class="page-head-actions">
+        <RouterLink to="/workspace/settings">
+          <el-button>{{ aiStore.hasChat ? '管理对话模型' : '去绑定对话模型' }}</el-button>
+        </RouterLink>
+      </div>
+    </header>
+
+    <section class="surface agent-chat">
+      <div class="table-card-head">
+        <h2>直接对话</h2>
+        <el-tag size="small" effect="plain" :type="aiStore.hasChat ? 'success' : 'warning'">
+          {{ aiStore.hasChat ? `已绑定 · ${aiStore.configFor('chat')?.model}` : '未绑定对话模型' }}
+        </el-tag>
+      </div>
+
+      <el-alert
+        v-if="chatBlocked"
+        class="agent-chat-alert"
+        type="warning"
+        :closable="false"
+        show-icon
+        title="还没有配置对话模型"
+      >
+        助手不会在缺少凭据时编造答案。请到「AI 与设置」绑定 chat 任务后再对话；
+        下面的工作流（筛职位、建投递）不依赖模型，现在就能用。
+        <RouterLink class="inline-link" to="/workspace/settings">去配置</RouterLink>
+      </el-alert>
+
+      <div v-if="chatHistory.length" class="agent-chat-log">
+        <div
+          v-for="(item, index) in chatHistory"
+          :key="index"
+          class="agent-chat-line"
+          :class="`agent-chat-line--${item.role}`"
+        >
+          <p>{{ item.content }}</p>
+        </div>
+      </div>
+
+      <div class="agent-chat-input">
+        <el-input
+          v-model="chatInput"
+          type="textarea"
+          :rows="2"
+          :disabled="chatBlocked"
+          placeholder="例如：这周该优先跟进哪几条投递？"
+          @keydown.enter.exact.prevent="sendChat"
+        />
+        <el-button
+          type="primary"
+          :loading="chatting"
+          :disabled="chatBlocked || !chatInput.trim()"
+          @click="sendChat"
+        >
+          发送
+        </el-button>
+      </div>
+      <p v-if="chatError" class="muted-note agent-chat-error">{{ chatError }}</p>
     </section>
 
     <div class="agent-layout">
       <section class="surface agent-console">
+        <div class="section-heading section-heading--compact">
+          <div>
+            <p class="eyebrow">按目标执行</p>
+            <h2>选一个任务</h2>
+          </div>
+        </div>
         <el-form label-position="top">
           <el-form-item label="任务类型">
             <el-select v-model="form.intent" @change="changeIntent">
               <el-option label="搜索职位" value="job_search" />
               <el-option label="匹配报告" value="match_report" />
               <el-option label="技能差距" value="skill_gap" />
-              <el-option label="创建申请" value="create_application" />
-              <el-option label="更新申请" value="update_application" />
+              <el-option label="创建投递" value="create_application" />
+              <el-option label="更新投递" value="update_application" />
             </el-select>
           </el-form-item>
-          <el-form-item label="告诉 Agent 你的目标">
+          <el-form-item label="告诉助手你的目标">
             <el-input v-model="form.message" type="textarea" :rows="3" />
           </el-form-item>
           <div v-if="form.intent === 'job_search'" class="form-grid">
@@ -171,22 +275,22 @@ onBeforeUnmount(() => eventSource?.close())
             </el-form-item>
             <el-form-item label="目标状态">
               <el-select v-model="form.application_status">
-                <el-option v-for="status in (['preparing','applied','interview','offer','rejected','withdrawn'] as ApplicationStatus[])" :key="status" :label="status" :value="status" />
+                <el-option v-for="status in (['not_applied','applied','written_test','interview_done','offer','rejected','withdrawn'] as ApplicationStatus[])" :key="status" :label="APPLICATION_STATUS_LABELS[status]" :value="status" />
               </el-select>
             </el-form-item>
           </template>
           <el-button type="primary" :icon="ChatDotRound" :loading="loading" @click="startRun">
-            启动工作流
+            开始
           </el-button>
         </el-form>
       </section>
 
       <section class="surface agent-trace">
         <div class="section-heading section-heading--compact">
-          <div><p class="eyebrow">DURABLE TRACE</p><h2>执行轨迹</h2></div>
+          <div><p class="eyebrow">执行记录</p><h2>做了什么</h2></div>
           <el-tag v-if="run" :type="run.status === 'completed' ? 'success' : run.status === 'failed' ? 'danger' : 'warning'">{{ run.status }}</el-tag>
         </div>
-        <el-empty v-if="!run" description="启动任务后，这里会显示节点事件" />
+        <el-empty v-if="!run" description="开始任务后，这里会显示每一步发生了什么" />
         <template v-else>
           <el-timeline>
             <el-timeline-item v-for="event in events" :key="`${event.id}-${event.event}`" :type="event.event === 'run_failed' ? 'danger' : event.event === 'run_completed' ? 'success' : 'primary'">

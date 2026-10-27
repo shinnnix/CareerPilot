@@ -71,7 +71,7 @@ onMounted(loadResumes)
 
 <template>
   <main class="page page--narrow">
-    <RouterLink class="back-link" :to="`/jobs/${jobId}`">
+    <RouterLink class="back-link" :to="`/workspace/jobs/${jobId}`">
       <el-icon><ArrowLeft /></el-icon>返回职位
     </RouterLink>
     <section class="match-hero">
@@ -136,7 +136,7 @@ onMounted(loadResumes)
         <article v-for="evidence in report.evidence" :key="evidence.chunk_id" class="surface evidence-card">
           <strong>{{ evidence.section_path.join(' / ') }}</strong>
           <p>{{ evidence.expanded_content || evidence.content }}</p>
-          <RouterLink :to="`/knowledge/${evidence.document_id}`">查看原始 Chunk →</RouterLink>
+          <RouterLink :to="`/workspace/library/${evidence.document_id}`">查看原始 Chunk →</RouterLink>
         </article>
       </section>
 

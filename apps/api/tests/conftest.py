@@ -24,6 +24,8 @@ from app.domains.documents.model import (  # noqa: F401
     KnowledgeDocument,
 )
 from app.domains.jobs.model import Job  # noqa: F401
+from app.domains.reminders.model import Reminder  # noqa: F401
+from app.domains.resumes.model import Resume, ResumeOptimization, ResumeVersion  # noqa: F401
 from app.main import app
 
 

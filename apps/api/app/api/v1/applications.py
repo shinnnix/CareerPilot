@@ -34,8 +34,16 @@ from app.domains.applications.service import (
 router = APIRouter(tags=["applications"])
 ERRORS = {404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}}
 
+# Legacy job-based application endpoints. They stay functional for one release
+# (plan §9.6 / §13.3) but the workspace equivalents under ``/workspace/applications``
+# are the supported path: they are position-scoped, carry snapshots and drive the
+# catalog's derived status.
+_LEGACY = (
+    "旧接口，仅保留兼容；新代码请使用 /workspace/applications（岗位级、带快照与派生状态）。"
+)
 
-@router.get("/applications", response_model=ApplicationList)
+
+@router.get("/applications", response_model=ApplicationList, deprecated=True, description=_LEGACY)
 def list_applications(
     service: Annotated[ApplicationService, Depends(get_application_service)],
     user_id: Annotated[str, Depends(get_current_user_id)],
@@ -44,7 +52,12 @@ def list_applications(
     return service.list(user_id=user_id, status=application_status)
 
 
-@router.get("/applications/follow-ups", response_model=ApplicationList)
+@router.get(
+    "/applications/follow-ups",
+    response_model=ApplicationList,
+    deprecated=True,
+    description=_LEGACY,
+)
 def list_followups(
     service: Annotated[ApplicationService, Depends(get_application_service)],
     user_id: Annotated[str, Depends(get_current_user_id)],
@@ -53,7 +66,12 @@ def list_followups(
     return service.followups(user_id=user_id, before=before or datetime.now(timezone.utc))
 
 
-@router.get("/applications/metrics", response_model=ApplicationMetrics)
+@router.get(
+    "/applications/metrics",
+    response_model=ApplicationMetrics,
+    deprecated=True,
+    description=_LEGACY,
+)
 def application_metrics(
     service: Annotated[ApplicationService, Depends(get_application_service)],
     user_id: Annotated[str, Depends(get_current_user_id)],
@@ -66,6 +84,8 @@ def application_metrics(
     response_model=ApplicationRead,
     status_code=status.HTTP_201_CREATED,
     responses=ERRORS,
+    deprecated=True,
+    description=_LEGACY,
 )
 def create_application(
     payload: ApplicationCreate,
@@ -79,6 +99,8 @@ def create_application(
     "/applications/{application_id}",
     response_model=ApplicationDetail,
     responses=ERRORS,
+    deprecated=True,
+    description=_LEGACY,
 )
 def get_application(
     application_id: str,
@@ -92,6 +114,8 @@ def get_application(
     "/applications/{application_id}",
     response_model=ApplicationDetail,
     responses=ERRORS,
+    deprecated=True,
+    description=_LEGACY,
 )
 def update_application(
     application_id: str,

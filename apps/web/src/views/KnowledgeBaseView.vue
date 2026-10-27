@@ -6,7 +6,8 @@ import { DocumentAdd, UploadFilled } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 
 import { importTextDocument, listDocuments, uploadDocument } from '@/api/documents'
-import { getApiErrorMessage } from '@/api/errors'
+import { getApiErrorCode, getApiErrorDetails, getApiErrorMessage } from '@/api/errors'
+import { importResumeText, uploadResumeFile } from '@/api/resumes'
 import type { DocumentSummary, DocumentType } from '@/types/documents'
 
 const router = useRouter()
@@ -19,7 +20,7 @@ const selectedFile = ref<File | null>(null)
 
 const form = reactive({
   display_name: '',
-  document_type: 'job_description' as DocumentType,
+  document_type: 'learning_note' as DocumentType,
   raw_text: '',
 })
 
@@ -36,6 +37,12 @@ const typeLabels: Record<DocumentType, string> = {
   learning_note: '学习笔记',
   other: '其他资料',
 }
+
+/**
+ * Plan §5.4: JD 原文统一从「职位信息 → 导入职位」进入，这里不再提供手工录入入口。
+ * `job_description` 仅用于展示历史数据。
+ */
+const importTypes: DocumentType[] = ['resume', 'learning_note', 'other']
 
 async function loadDocuments() {
   loading.value = true
@@ -73,6 +80,22 @@ async function submitImport() {
 
   submitting.value = true
   try {
+    if (form.document_type === 'resume') {
+      // Resume uploads now continue into the editable resume workspace instead
+      // of stopping at a raw knowledge document.
+      const resume = importMode.value === 'text'
+        ? await importResumeText({
+            display_name: form.display_name,
+            raw_text: form.raw_text,
+          })
+        : await uploadResumeFile({
+            display_name: form.display_name,
+            file: selectedFile.value as File,
+          })
+      ElMessage.success('已解析为可编辑简历，可继续生成 AI 优化建议')
+      await router.push(`/workspace/resumes/${resume.id}`)
+      return
+    }
     const document = importMode.value === 'text'
       ? await importTextDocument({ ...form })
       : await uploadDocument({
@@ -81,8 +104,16 @@ async function submitImport() {
           file: selectedFile.value as File,
         })
     ElMessage.success(`已生成 ${document.chunk_count} 个标题感知 Chunk`)
-    await router.push(`/knowledge/${document.id}`)
+    await router.push(`/workspace/library/${document.id}`)
   } catch (error) {
+    if (getApiErrorCode(error) === 'RESUME_EXISTS') {
+      const resumeId = getApiErrorDetails(error).resume_id
+      if (typeof resumeId === 'string') {
+        ElMessage.info('该简历已经建立过工作台，正在打开已有版本')
+        await router.push(`/workspace/resumes/${resumeId}`)
+        return
+      }
+    }
     ElMessage.error(getApiErrorMessage(error))
   } finally {
     submitting.value = false
@@ -98,12 +129,13 @@ onMounted(loadDocuments)
 
 <template>
   <main class="page">
-    <section class="knowledge-hero">
+    <header class="page-head">
       <div>
-        <p class="eyebrow">WEEK 2 · KNOWLEDGE INGESTION</p>
-        <h1>看见文档如何变成<br />可检索的知识单元</h1>
-        <p class="hero-copy">
-          原文、结构化字段和 Chunk 同时保留。当前使用可解释规则解析，所有结果都可人工确认。
+        <p class="eyebrow">更多工具</p>
+        <h1>资料库</h1>
+        <p class="page-desc">
+          证据底座：简历原文、项目材料、学习笔记的规范化文本与 Chunk。
+          证据检索、简历优化引用、匹配解释都从这里取证据，改一处、处处一致。
         </p>
       </div>
       <div class="knowledge-stats">
@@ -111,14 +143,14 @@ onMounted(loadDocuments)
         <div><strong>{{ totalChunks }}</strong><span>Chunks</span></div>
         <div><strong>{{ pendingCount }}</strong><span>待确认</span></div>
       </div>
-    </section>
+    </header>
 
     <div class="knowledge-layout">
       <section class="surface import-panel">
         <div class="section-heading section-heading--compact">
           <div>
-            <p class="eyebrow">IMPORT</p>
-            <h2>导入私人资料</h2>
+            <p class="eyebrow">导入</p>
+            <h2>导入自己的材料</h2>
           </div>
         </div>
         <el-tabs v-model="importMode" stretch>
@@ -129,22 +161,31 @@ onMounted(loadDocuments)
           <el-form-item label="资料类型">
             <el-select v-model="form.document_type">
               <el-option
-                v-for="(label, value) in typeLabels"
+                v-for="value in importTypes"
                 :key="value"
-                :label="label"
+                :label="typeLabels[value]"
                 :value="value"
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="文档名称">
+          <el-form-item label="资料名称">
             <el-input v-model="form.display_name" placeholder="例如：我的中文简历 v2" />
           </el-form-item>
-          <el-form-item v-if="importMode === 'text'" label="文档原文">
+          <el-alert
+            v-if="form.document_type === 'resume'"
+            class="inline-alert"
+            type="info"
+            :closable="false"
+            show-icon
+            title="简历将进入简历工作台"
+            description="上传后会按章节拆成可编辑结构，可直接针对目标岗位/JD 生成匹配报告与建议稿。"
+          />
+          <el-form-item v-if="importMode === 'text'" label="原文">
             <el-input
               v-model="form.raw_text"
               type="textarea"
               :rows="11"
-              placeholder="建议保留岗位职责、任职要求、项目经历等标题……"
+              placeholder="保留原文标题与段落，例如「项目经历」「课程笔记」……"
             />
           </el-form-item>
           <el-form-item v-else label="选择文件">
@@ -170,7 +211,7 @@ onMounted(loadDocuments)
             class="full-button"
             @click="submitImport"
           >
-            解析并建立 Chunk
+            {{ form.document_type === 'resume' ? '解析并生成简历工作台' : '解析并建立 Chunk' }}
           </el-button>
         </el-form>
       </section>
@@ -178,8 +219,8 @@ onMounted(loadDocuments)
       <section>
         <div class="section-heading section-heading--compact">
           <div>
-            <p class="eyebrow">DOCUMENTS</p>
-            <h2>知识库资料</h2>
+            <p class="eyebrow">资料清单</p>
+            <h2>已导入的资料</h2>
           </div>
           <span>{{ documents.length }} 份</span>
         </div>
@@ -197,7 +238,7 @@ onMounted(loadDocuments)
           <RouterLink
             v-for="document in documents"
             :key="document.id"
-            :to="`/knowledge/${document.id}`"
+            :to="`/workspace/library/${document.id}`"
             class="document-row"
           >
             <div class="document-icon">{{ typeLabels[document.document_type].slice(0, 1) }}</div>

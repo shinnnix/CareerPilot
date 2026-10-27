@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = Field(default=120, ge=1, le=1_000_000)
     auth_rate_limit_per_minute: int = Field(default=10, ge=1, le=1_000_000)
     trusted_proxy_headers: bool = False
+    # AI base_url guard (SSRF). Local-first installs legitimately point at
+    # Ollama/llama.cpp on 127.0.0.1, so private hosts are allowed by default.
+    # Set to false for a shared/Internet-facing deployment to block loopback and
+    # RFC1918 targets; metadata endpoints are always blocked either way.
+    ai_allow_private_hosts: bool = True
+    # WeChat article import honours mp.weixin.qq.com/robots.txt by default.
+    # Only disable this when you are authorised to fetch the article yourself.
+    wechat_respect_robots: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env",

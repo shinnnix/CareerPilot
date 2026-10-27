@@ -1,4 +1,4 @@
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -8,6 +8,7 @@ from app.domains.agent.model import AgentEvent, AgentRun, ToolReceipt
 from app.domains.applications.model import (
     Application,
     ApplicationEvent,
+    ApplicationStageDetail,
     GeneratedArtifact,
     MatchFeedback,
 )
@@ -27,7 +28,15 @@ from app.domains.auth.security import (
     verify_password,
 )
 from app.domains.documents.model import ChunkEmbedding, DocumentChunk, KnowledgeDocument
-from app.domains.jobs.model import Job
+from app.domains.jobs.model import (
+    Job,
+    JobAnnouncement,
+    JobImport,
+    JobPosition,
+    UserJobMark,
+    UserTablePreference,
+)
+from app.domains.resumes.model import Resume, ResumeOptimization
 
 PURGE_CONFIRMATION = "DELETE MY DATA"
 DUMMY_PASSWORD_HASH = hash_password("not-a-real-password")
@@ -95,13 +104,32 @@ class AuthService:
             ("generated_artifacts", GeneratedArtifact),
             ("match_feedback", MatchFeedback),
             ("application_events", ApplicationEvent),
+            ("application_stage_details", ApplicationStageDetail),
             ("applications", Application),
+            ("user_job_marks", UserJobMark),
+            ("job_imports", JobImport),
+            ("user_table_preferences", UserTablePreference),
+            ("resume_optimizations", ResumeOptimization),
+            ("resumes", Resume),
             ("chunk_embeddings", ChunkEmbedding),
             ("document_chunks", DocumentChunk),
             ("knowledge_documents", KnowledgeDocument),
             ("jobs", Job),
         ]
         try:
+            # Catalog rows are owned through the announcement, not a user_id column.
+            announcement_ids = select(JobAnnouncement.id).where(
+                JobAnnouncement.owner_user_id == user_id
+            )
+            positions = self.session.execute(
+                delete(JobPosition).where(JobPosition.announcement_id.in_(announcement_ids))
+            )
+            counts["job_positions"] = int(positions.rowcount or 0)
+            announcements = self.session.execute(
+                delete(JobAnnouncement).where(JobAnnouncement.owner_user_id == user_id)
+            )
+            counts["job_announcements"] = int(announcements.rowcount or 0)
+
             for label, model in targets:
                 result = self.session.execute(delete(model).where(model.user_id == user_id))
                 counts[label] = int(result.rowcount or 0)

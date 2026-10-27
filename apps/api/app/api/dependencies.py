@@ -12,14 +12,21 @@ from app.domains.applications.service import (
     ApplicationService,
     AutofillService,
     PersonalizationService,
+    WorkspaceApplicationService,
 )
 from app.domains.auth.model import User
 from app.domains.auth.repository import UserRepository
 from app.domains.auth.security import decode_access_token
 from app.domains.auth.service import AuthService
 from app.domains.documents.service import DocumentService
-from app.domains.jobs.service import JobService
+from app.domains.jobs.service import JobCatalogService, JobService
 from app.domains.matching.service import MatchingService
+from app.domains.reminders.service import ReminderService
+from app.domains.resumes.service import (
+    ResumeOptimizationService,
+    ResumeService,
+    ResumeVersionService,
+)
 from app.domains.retrieval.service import RetrievalService
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -94,6 +101,12 @@ def get_job_service(session: Annotated[Session, Depends(get_db)]) -> JobService:
     return JobService(session)
 
 
+def get_job_catalog_service(
+    session: Annotated[Session, Depends(get_db)],
+) -> JobCatalogService:
+    return JobCatalogService(session)
+
+
 def get_document_service(
     session: Annotated[Session, Depends(get_db)],
 ) -> DocumentService:
@@ -118,6 +131,12 @@ def get_application_service(
     return ApplicationService(session)
 
 
+def get_workspace_application_service(
+    session: Annotated[Session, Depends(get_db)],
+) -> WorkspaceApplicationService:
+    return WorkspaceApplicationService(session)
+
+
 def get_personalization_service(
     session: Annotated[Session, Depends(get_db)],
 ) -> PersonalizationService:
@@ -132,3 +151,27 @@ def get_agent_service(
     session: Annotated[Session, Depends(get_db)],
 ) -> AgentService:
     return AgentService(session)
+
+
+def get_resume_service(
+    session: Annotated[Session, Depends(get_db)],
+) -> ResumeService:
+    return ResumeService(session)
+
+
+def get_resume_optimization_service(
+    session: Annotated[Session, Depends(get_db)],
+) -> ResumeOptimizationService:
+    return ResumeOptimizationService(session)
+
+
+def get_resume_version_service(
+    session: Annotated[Session, Depends(get_db)],
+) -> ResumeVersionService:
+    return ResumeVersionService(session)
+
+
+def get_reminder_service(
+    session: Annotated[Session, Depends(get_db)],
+) -> ReminderService:
+    return ReminderService(session)
